@@ -159,8 +159,11 @@ bt_gatt_notify(conn_, &sensor_svc.attrs[2], &temperature, sizeof(temperature));
 
 ```bash
 west build -b nrf5340dk/nrf5340/cpuapp
-west flash
+west flash --runner jlink
 ```
+> **Note:** The default `nrfutil` runner requires Nordic's nRF Util to be installed.
+> If you get a `nrfutil not found` error, use `--runner jlink` instead (requires
+> J-Link tools, which ship with the nRF5340-DK board package).
 
 Open a serial terminal at 115200 baud to see the sensor log.
 Use **nRF Connect** (mobile or desktop) to connect and read the temperature characteristic.

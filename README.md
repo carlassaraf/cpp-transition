@@ -178,7 +178,7 @@ self-assessment checklist.
 # Build and flash any exercise
 cd 01_namespaces_references
 west build -b nrf5340dk/nrf5340/cpuapp
-west flash
+west flash --runner jlink
 
 # Open serial terminal (J-Link virtual COM port, 115200 baud)
 # macOS / Linux

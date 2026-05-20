@@ -97,8 +97,11 @@ This is polymorphism: the same loop works regardless of how many sensor types yo
 
 ```bash
 west build -b nrf5340dk/nrf5340/cpuapp
-west flash
+west flash --runner jlink
 ```
+> **Note:** The default `nrfutil` runner requires Nordic's nRF Util to be installed.
+> If you get a `nrfutil not found` error, use `--runner jlink` instead (requires
+> J-Link tools, which ship with the nRF5340-DK board package).
 
 Open a serial terminal (115200 baud) to see the sensor readings.
 
