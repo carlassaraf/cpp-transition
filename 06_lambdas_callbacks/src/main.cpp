@@ -1,0 +1,111 @@
+/*
+ * Exercise 06 — Lambdas and Callable Objects
+ *
+ * Implement ButtonDispatcher and register callbacks in three styles.
+ *
+ * Build: west build -b nrf5340dk/nrf5340/cpuapp
+ */
+
+#include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/printk.h>
+#include <functional>
+
+static const gpio_dt_spec kBtn0 = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
+static const gpio_dt_spec kBtn1 = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
+static const gpio_dt_spec kLed0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const gpio_dt_spec kLed1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+
+/* =========================================================================
+ * Minimal Led class (from Exercise 02) — already complete for you
+ * ========================================================================= */
+class Led {
+public:
+    explicit Led(const gpio_dt_spec &spec) : spec_(spec) {
+        gpio_pin_configure_dt(&spec_, GPIO_OUTPUT_INACTIVE);
+    }
+    void on()     const { gpio_pin_set_dt(&spec_, 1); }
+    void off()    const { gpio_pin_set_dt(&spec_, 0); }
+    void toggle() const { gpio_pin_toggle_dt(&spec_); }
+private:
+    const gpio_dt_spec &spec_;
+};
+
+/* =========================================================================
+ * TODO: Implement ButtonDispatcher
+ *
+ * - Constructor configures the pin as input with pull-up.
+ * - set_callback() stores the callable.
+ * - poll() detects a low-going edge (released→pressed, active-low buttons)
+ *   and invokes the callback exactly once per press event.
+ * ========================================================================= */
+class ButtonDispatcher {
+public:
+    using Callback = std::function<void()>;
+
+    explicit ButtonDispatcher(const gpio_dt_spec &spec) : spec_(spec) {
+        /* TODO: configure GPIO */
+    }
+
+    void set_callback(Callback cb) {
+        /* TODO: store cb */
+    }
+
+    void poll() {
+        /* TODO:
+         * 1. Read current pin state
+         * 2. Detect falling edge (active-low: prev=0, curr=1 means released,
+         *    prev=1, curr=0 means just pressed)
+         * 3. If pressed edge detected and callback_ is set, call it
+         */
+    }
+
+private:
+    const gpio_dt_spec &spec_;
+    Callback callback_;
+    bool last_pressed_{false};
+};
+
+/* =========================================================================
+ * Part A — Plain function callback (Style 1)
+ * ========================================================================= */
+static Led *g_led0_ptr = nullptr;   /* set in main before registering */
+
+static void on_button0_press()
+{
+    if (g_led0_ptr) {
+        g_led0_ptr->toggle();
+    }
+    printk("Button 0: function pointer callback\n");
+}
+
+/* =========================================================================
+ * main — register three callback styles, then poll in a loop
+ * ========================================================================= */
+int main(void)
+{
+    Led led0{kLed0};
+    Led led1{kLed1};
+    g_led0_ptr = &led0;
+
+    ButtonDispatcher disp0{kBtn0};
+    ButtonDispatcher disp1{kBtn1};
+
+    /* Style 1: plain function pointer */
+    disp0.set_callback(on_button0_press);
+
+    /* Style 2: lambda with capture — TODO: write the lambda body */
+    int press_count = 0;
+    disp1.set_callback([&press_count, &led1]() {
+        /* TODO: increment press_count, toggle led1, printk the count */
+    });
+
+    /* Main polling loop */
+    while (true) {
+        disp0.poll();
+        disp1.poll();
+        k_msleep(20);   /* 20 ms debounce window */
+    }
+
+    return 0;
+}
