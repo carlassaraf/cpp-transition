@@ -1,0 +1,22 @@
+config LED0_BLINKY_MS
+  int "Blinky time for LED0 in milliseconds"
+  default 500
+  help
+    This option sets the time in milliseconds for the blinky example.
+    The default value is 500 ms, which means the LED will toggle every half second.
+
+config LED1_BLINKY_MS
+  int "Blinky time for LED1 in milliseconds"
+  default 200
+  help
+    This option sets the time in milliseconds for the blinky example.
+    The default value is 500 ms, which means the LED will toggle every half second.
+
+config INIT_TIME_MS
+  int "Initialization time in milliseconds"
+  default 1000
+  help
+    This option sets the initialization time in milliseconds for the blinky example.
+    The default value is 1000 ms, which means the system will wait for 1 second before starting the blinky sequence.
+
+source "Kconfig.zephyr"

@@ -71,8 +71,12 @@ Mark local variables that never change as `const`.
 ```bash
 # From the exercise directory
 west build -b nrf5340dk/nrf5340/cpuapp
-west flash
+west flash --runner jlink
 ```
+
+> **Note:** The default `nrfutil` runner requires Nordic's nRF Util to be installed.
+> If you get a `nrfutil not found` error, use `--runner jlink` instead (requires
+> J-Link tools, which ship with the nRF5340-DK board package).
 
 Or use the **nRF Connect for VS Code** extension:
 1. Open this folder as the application root.

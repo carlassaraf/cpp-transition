@@ -10,54 +10,100 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 
-/* -------------------------------------------------------------------------
- * TODO Part A: Replace these #defines with constexpr variables.
- * Hint: constexpr uint32_t kBlinkMs = 500;
- * ------------------------------------------------------------------------- */
-#define BLINK_INTERVAL_MS   500
-#define INIT_DELAY_MS       100
+namespace blink {
 
-/* -------------------------------------------------------------------------
- * TODO Part B: Move everything below (except main) into namespace blink { }
- * ------------------------------------------------------------------------- */
-
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-
-/* -------------------------------------------------------------------------
- * TODO Part C & D: Change pointer parameters to const references.
- * Before: void led_init(const struct gpio_dt_spec *spec)
- * After:  void led_init(const gpio_dt_spec &spec)
- * ------------------------------------------------------------------------- */
-static int led_init(const struct gpio_dt_spec *spec)
-{
-    if (!gpio_is_ready_dt(spec)) {
-        return -ENODEV;
+    static int led_init(const struct gpio_dt_spec &spec)
+    {
+        if (!gpio_is_ready_dt(&spec)) {
+            return -ENODEV;
+        }
+        return gpio_pin_configure_dt(&spec, GPIO_OUTPUT_INACTIVE);
     }
-    return gpio_pin_configure_dt(spec, GPIO_OUTPUT_INACTIVE);
-}
 
-static void led_toggle(const struct gpio_dt_spec *spec)
-{
-    gpio_pin_toggle_dt(spec);
-}
+    static void led_toggle(const struct gpio_dt_spec &spec)
+    {
+        gpio_pin_toggle_dt(&spec);
+    }
+};
 
-static bool led_is_active(const struct gpio_dt_spec *spec)
-{
-    return gpio_pin_get_dt(spec) > 0;
-}
+namespace led0_thread {
+    // Thread parameters
+    struct k_thread led_thread;
+    constexpr uint32_t stack_size = 1024;
+    constexpr int kPrio = 1;
+    K_THREAD_STACK_DEFINE(led_stack, stack_size);
+
+    // Blink and init time
+    constexpr uint32_t kBlinkMs = CONFIG_LED0_BLINKY_MS;
+    constexpr uint32_t kInitDelayMs = CONFIG_INIT_TIME_MS;
+
+    // LED specification
+    const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+    
+    // Thread entry point
+    void thread_entry(void *, void *, void *)
+    {
+        if (blink::led_init(led) != 0) {
+            return;
+        }
+        while (true) {
+            blink::led_toggle(led);
+            k_msleep(kBlinkMs);
+        }
+    }
+};
+
+namespace led1_thread {
+    // Thread parameters
+    struct k_thread led_thread;
+    constexpr uint32_t stack_size = 1024;
+    constexpr int kPrio = 1;
+    K_THREAD_STACK_DEFINE(led_stack, stack_size);
+
+    // Blink and init time
+    constexpr uint32_t kBlinkMs = CONFIG_LED1_BLINKY_MS;
+    constexpr uint32_t kInitDelayMs = CONFIG_INIT_TIME_MS;
+
+    // LED specification
+    const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+
+    // Thread entry point
+    void thread_entry(void *, void *, void *)
+    {
+        if (blink::led_init(led) != 0) {
+            return;
+        }
+        while (true) {
+            blink::led_toggle(led);
+            k_msleep(kBlinkMs);
+        }
+    }
+};
 
 int main(void)
 {
-    k_msleep(INIT_DELAY_MS);
+    // Create threads for LED0 and LED1
 
-    if (led_init(&led) != 0) {
-        return -1;
-    }
+    k_thread_create(
+        &led0_thread::led_thread,
+        led0_thread::led_stack,
+        K_THREAD_STACK_SIZEOF(led0_thread::led_stack),
+        led0_thread::thread_entry,
+        nullptr, nullptr, nullptr,
+        led0_thread::kPrio,
+        0, K_MSEC(led0_thread::kInitDelayMs)
+    );
 
-    while (true) {
-        led_toggle(&led);
-        k_msleep(BLINK_INTERVAL_MS);
-    }
+    k_thread_create(
+        &led1_thread::led_thread,
+        led1_thread::led_stack,
+        K_THREAD_STACK_SIZEOF(led1_thread::led_stack),
+        led1_thread::thread_entry,
+        nullptr, nullptr, nullptr,
+        led1_thread::kPrio,
+        0, K_MSEC(led1_thread::kInitDelayMs)
+    );
 
+    while (true) { k_sleep(K_FOREVER); }
     return 0;
 }
