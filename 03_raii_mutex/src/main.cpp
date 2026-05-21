@@ -24,14 +24,16 @@ static const gpio_dt_spec kLed1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 class ScopedLock {
 public:
     explicit ScopedLock(k_mutex &mutex) : mutex_(mutex) {
-        /* TODO */
+        k_mutex_lock(&mutex_, K_FOREVER);
     }
 
     ~ScopedLock() {
-        /* TODO */
+        // k_mutex_unlock(&mutex_);
     }
 
     /* TODO: delete copy constructor and copy-assignment operator */
+    ScopedLock(const ScopedLock &) = delete;
+    ScopedLock &operator=(const ScopedLock &) = delete;
 
 private:
     k_mutex &mutex_;
@@ -50,11 +52,14 @@ public:
 
     void increment() {
         /* TODO: create a ScopedLock, then increment value_ */
+        ScopedLock lock(mutex_);
+        value_++;
     }
 
     int get() const {
         /* TODO: create a ScopedLock, then return value_ */
-        return 0;
+        ScopedLock lock(mutex_);
+        return value_;
     }
 
 private:
@@ -77,7 +82,7 @@ static void thread_a(void *, void *, void *)
     while (true) {
         g_counter.increment();
         gpio_pin_toggle_dt(&kLed0);
-        k_msleep(200);
+        k_msleep(50);
     }
 }
 
