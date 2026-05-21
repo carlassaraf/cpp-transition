@@ -1,0 +1,125 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug 01_namespaces_references",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/01_namespaces_references/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 02_gpio_class",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/02_gpio_class/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 03_raii_mutex",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/03_raii_mutex/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 04_inheritance_polymorphism",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/04_inheritance_polymorphism/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 05_templates_ring_buffer",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/05_templates_ring_buffer/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 06_lambdas_callbacks",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/06_lambdas_callbacks/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 07_state_machine",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/07_state_machine/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 08_error_handling",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/08_error_handling/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 09_rtos_threads",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/09_rtos_threads/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        },
+        {
+            "name": "Debug 10_final_ble_sensor_node",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "device": "nRF5340_xxAA_APP",
+            "interface": "swd",
+            "runToEntryPoint": "main",
+            "executable": "${workspaceFolder}/10_final_ble_sensor_node/build/zephyr/zephyr.elf",
+            "serverpath": "/usr/local/bin/JLinkGDBServer",
+            "gdbPath": "/opt/nordic/ncs/toolchains/322ac893fe/opt/zephyr-sdk/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb"
+        }
+    ]
+}
