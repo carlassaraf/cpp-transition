@@ -33,6 +33,91 @@ and why they are the embedded-friendly alternative to `void *` casts.
 
 ---
 
+## How a Ring Buffer Works
+
+A ring buffer is a fixed-size array treated as a circle. Two indices track where
+to write next (`tail`) and where to read next (`head`). When an index reaches the
+end of the array it wraps back to `[0]` — hence "ring". A `count` field
+disambiguates the full vs. empty cases (both have `head == tail`).
+
+The examples below use `RingBuffer<char, 6>`.
+
+---
+
+**1 — Initial state (empty)**
+
+```
+ ┌────┬────┬────┬────┬────┬────┐
+ │    │    │    │    │    │    │
+ └────┴────┴────┴────┴────┴────┘
+  [0]  [1]  [2]  [3]  [4]  [5]
+   ↑
+ head = tail = 0    count = 0
+```
+
+---
+
+**2 — After `push(A)`, `push(B)`, `push(C)`**
+
+Each push writes at `tail` then advances it.
+
+```
+ ┌────┬────┬────┬────┬────┬────┐
+ │ A  │ B  │ C  │    │    │    │
+ └────┴────┴────┴────┴────┴────┘
+  [0]  [1]  [2]  [3]  [4]  [5]
+   ↑              ↑
+ head            tail            count = 3
+```
+
+---
+
+**3 — After `pop() → A`, `pop() → B`**
+
+Each pop reads from `head` then advances it. The slots are logically free but the
+data is not erased — only `head` moves forward.
+
+```
+ ┌────┬────┬────┬────┬────┬────┐
+ │ ·  │ ·  │ C  │    │    │    │
+ └────┴────┴────┴────┴────┴────┘
+  [0]  [1]  [2]  [3]  [4]  [5]
+              ↑    ↑
+            head  tail           count = 1
+```
+
+---
+
+**4 — After `push(D)`, `push(E)`, `push(F)`, `push(G)`, `push(H)` — wrap-around**
+
+`tail` hits `[5]`, wraps to `[0]`, and continues filling the slots freed earlier
+by the two pops. The buffer is now full (`count == N`).
+
+```
+ ┌────┬────┬────┬────┬────┬────┐
+ │ G  │ H  │ C  │ D  │ E  │ F  │
+ └────┴────┴────┴────┴────┴────┘
+  [0]  [1]  [2]  [3]  [4]  [5]
+              ↑
+         head = tail = 2         count = 6  (FULL)
+```
+
+Reading order (FIFO): C → D → E → F → G → H
+
+> `head == tail` is true for both the **empty** and **full** states — `count` is the
+> only way to tell them apart.
+
+---
+
+**Index arithmetic — the key line in every ring buffer:**
+
+```cpp
+tail_ = (tail_ + 1) % N;   // wrap [N-1] back to [0]
+head_ = (head_ + 1) % N;
+```
+
+---
+
 ## Hardware
 
 - nRF5340 DK

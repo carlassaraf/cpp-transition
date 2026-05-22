@@ -26,23 +26,41 @@ public:
     static_assert(N > 0, "RingBuffer size must be greater than zero");
 
     bool push(const T &item) {
-        /* TODO */
-        return false;
-    }
-
-    bool pop(T &out) {
-        /* TODO */
-        return false;
-    }
-
-    bool is_empty() const {
-        /* TODO */
+        // Check buffer item count
+        if(is_full()) {
+            return false;
+        }
+        // Copy to tail position and advance tail
+        buf_.at(tail_) = item;
+        tail_ = (tail_ + 1) % N;
+        count_++;
         return true;
     }
 
+    bool pop(T &out) {
+        if(is_empty()) {
+            return false;
+        }
+        out = buf_.at(head_);
+        head_ = (head_ + 1) % N;
+        count_--;
+        return true;
+    }
+
+    bool peek(T &out) {
+        if(is_empty()) {
+            return false;
+        }
+        out = buf_.at(head_);
+        return true;
+    }
+
+    bool is_empty() const {
+        return size() == 0;
+    }
+
     bool is_full() const {
-        /* TODO */
-        return false;
+        return size() >= N;
     }
 
     size_t size() const {
