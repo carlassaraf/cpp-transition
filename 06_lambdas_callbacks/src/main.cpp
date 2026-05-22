@@ -44,11 +44,14 @@ public:
     using Callback = std::function<void()>;
 
     explicit ButtonDispatcher(const gpio_dt_spec &spec) : spec_(spec) {
-        /* TODO: configure GPIO */
+        if(!gpio_is_ready_dt(&spec_)) {
+            return;
+        }
+        gpio_pin_configure_dt(&spec_, GPIO_INPUT);
     }
 
     void set_callback(Callback cb) {
-        /* TODO: store cb */
+        callback_ = cb;
     }
 
     void poll() {
@@ -58,6 +61,14 @@ public:
          *    prev=1, curr=0 means just pressed)
          * 3. If pressed edge detected and callback_ is set, call it
          */
+        bool curr = gpio_pin_get_dt(&spec_);
+        if(curr && !last_pressed_) {
+            // Just pressed
+            if(callback_) {
+                callback_();
+            }
+        }
+        last_pressed_ = curr;
     }
 
 private:
@@ -98,6 +109,8 @@ int main(void)
     int press_count = 0;
     disp1.set_callback([&press_count, &led1]() {
         /* TODO: increment press_count, toggle led1, printk the count */
+        led1.toggle();
+        printk("Button 1: lambda callback (press_count = %d)\n", ++press_count);
     });
 
     /* Main polling loop */
