@@ -9,10 +9,12 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/devicetree.h>
 #include <functional>
 
 static const gpio_dt_spec kBtn0 = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
 static const gpio_dt_spec kBtn1 = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
+static const gpio_dt_spec kBtn2 = GPIO_DT_SPEC_GET(DT_ALIAS(sw2), gpios);
 static const gpio_dt_spec kLed0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 static const gpio_dt_spec kLed1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 
@@ -50,17 +52,19 @@ public:
         gpio_pin_configure_dt(&spec_, GPIO_INPUT);
     }
 
+    void enable_irq(void) {
+        gpio_init_callback(&gpio_cb_, isr_handler, BIT(spec_.pin));
+        gpio_add_callback(spec_.port, &gpio_cb_);
+        gpio_pin_interrupt_configure_dt(&spec_, GPIO_INT_EDGE_TO_ACTIVE);
+        k_work_init(&work_, work_handler);
+    }
+
     void set_callback(Callback cb) {
-        callback_ = cb;
+        callback_ = std::move(cb);
     }
 
     void poll() {
-        /* TODO:
-         * 1. Read current pin state
-         * 2. Detect falling edge (active-low: prev=0, curr=1 means released,
-         *    prev=1, curr=0 means just pressed)
-         * 3. If pressed edge detected and callback_ is set, call it
-         */
+        // Get current state and compare to trigger on flank
         bool curr = gpio_pin_get_dt(&spec_);
         if(curr && !last_pressed_) {
             // Just pressed
@@ -75,6 +79,20 @@ private:
     const gpio_dt_spec &spec_;
     Callback callback_;
     bool last_pressed_{false};
+    struct gpio_callback gpio_cb_;
+    struct k_work        work_;
+
+    static void isr_handler(const struct device *port, struct gpio_callback *cb, gpio_port_pins_t pins) {
+        ButtonDispatcher *self = CONTAINER_OF(cb, ButtonDispatcher, gpio_cb_);
+        k_work_submit(&self->work_);
+    }
+
+    static void work_handler(struct k_work *work) {
+        ButtonDispatcher *self = CONTAINER_OF(work, ButtonDispatcher, work_);
+        if (self->callback_) {
+            self->callback_();
+        }
+    }
 };
 
 /* =========================================================================
@@ -101,6 +119,7 @@ int main(void)
 
     ButtonDispatcher disp0{kBtn0};
     ButtonDispatcher disp1{kBtn1};
+    ButtonDispatcher disp2{kBtn2};
 
     /* Style 1: plain function pointer */
     disp0.set_callback(on_button0_press);
@@ -108,15 +127,19 @@ int main(void)
     /* Style 2: lambda with capture — TODO: write the lambda body */
     int press_count = 0;
     disp1.set_callback([&press_count, &led1]() {
-        /* TODO: increment press_count, toggle led1, printk the count */
         led1.toggle();
         printk("Button 1: lambda callback (press_count = %d)\n", ++press_count);
     });
+    disp1.enable_irq();
+
+    disp2.set_callback([]() {
+        printk("Button 2: lambda callback\n");
+    });
+    disp2.enable_irq();
 
     /* Main polling loop */
     while (true) {
         disp0.poll();
-        disp1.poll();
         k_msleep(20);   /* 20 ms debounce window */
     }
 
