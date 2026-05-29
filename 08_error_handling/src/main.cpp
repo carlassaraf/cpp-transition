@@ -66,35 +66,36 @@ template <typename T, typename E>
 class Result {
 public:
     static Result ok(T value) {
-        /* TODO */
         Result r;
+        r.storage_.result = value;
+        r.ok_ = true;
         return r;
     }
 
     static Result err(E error) {
-        /* TODO */
         Result r;
+        r.storage_.error = error;
+        r.ok_ = false;
         return r;
     }
 
-    bool is_ok()  const { /* TODO */ return false; }
+    bool is_ok()  const { return ok_; }
     bool is_err() const { return !is_ok(); }
 
     T value() const {
         assert(is_ok());
-        /* TODO */
-        return T{};
+        return storage_.result;
     }
 
     E error() const {
         assert(is_err());
-        /* TODO */
-        return E{};
+        return storage_.error;
     }
 
 private:
     Result() = default;
-    /* TODO: add storage */
+    union { T result; E error; } storage_;
+    bool ok_;
 };
 
 /* =========================================================================
