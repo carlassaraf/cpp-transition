@@ -17,16 +17,131 @@ static const gpio_dt_spec kLed2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
 static const gpio_dt_spec kLed3 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
 static const gpio_dt_spec kLed4 = GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios);
 
-/* =========================================================================
- * TODO Part A: Define State and Event with enum class
- * ========================================================================= */
+// States and Events
 
-/* Replace these with proper enum class definitions:
- *   States:  Idle, Advertising, Connecting, Connected
- *   Events:  Start, PeerFound, ConnectionDone, Disconnect, Timeout
- */
 enum class State  { Idle, Advertising, Connecting, Connected }; 
 enum class Event  { Start, PeerFound, ConnectionDone, Disconnect, Timeout };
+
+// State Interface Class
+
+class StateInterface {
+public:
+    virtual State handle_event(Event event) = 0;
+    virtual State get_state() = 0;
+    virtual const char* get_state_name() = 0;
+};
+
+// State implementation classes
+
+class Idle : public StateInterface {
+public:
+    State handle_event(Event event) override {
+        if(event == Event::Start) {
+            advertising();
+            return State::Advertising;
+        }
+        return State::Idle;
+    }
+
+    State get_state() override {
+        return State::Idle;
+    }
+
+    const char* get_state_name() override {
+        return "Idle";
+    }
+
+private:
+    void advertising() {
+        printk("Starting to advertise...\n");
+    }
+};
+
+class Advertising : public StateInterface {
+public:
+    State handle_event(Event event) override {
+        if(event == Event::PeerFound) {
+            device_found();
+            return State::Connecting;
+        } else if(event == Event::Timeout) {
+            timeout();
+            return State::Idle;
+        }
+        return State::Advertising;
+    }
+
+    State get_state() override {
+        return State::Advertising;
+    }
+
+    const char* get_state_name() override {
+        return "Advertising";
+    }
+
+private:
+    void device_found() {
+        printk("Device found. Attempting to connect...\n");
+    }
+
+    void timeout() {
+        printk("No device found. Connection failed...\n");
+    }
+};
+
+class Connecting : public StateInterface {
+public:
+    State handle_event(Event event) override {
+        if(event == Event::ConnectionDone) {
+            connected();
+            return State::Connected;
+        } else if(event == Event::Timeout) {
+            timeout();
+            return State::Advertising;
+        }
+        return State::Connecting;
+    }
+
+    State get_state() override {
+        return State::Connecting;
+    }
+
+    const char* get_state_name() override {
+        return "Connecting";
+    }
+
+private:
+    void connected() {
+        printk("Device connected!\n");
+    }
+
+    void timeout() {
+        printk("Timeout happened. Going back to advertising\n");
+    }
+};
+
+class Connected : public StateInterface {
+public:
+    State handle_event(Event event) override {
+        if(event == Event::Disconnect) {
+            disconnect();
+            return State::Idle;
+        }
+        return State::Connected;
+    }
+
+    State get_state() override {
+        return State::Connected;
+    }
+
+    const char* get_state_name() override {
+        return "Connected";
+    }
+
+private:
+    void disconnect() {
+        printk("Disconnecting...\n");
+    }
+};
 
 /* =========================================================================
  * TODO Part C: LED update — map each State to a visual LED pattern
@@ -56,86 +171,52 @@ static void update_leds(State state)
     default:
         break;
     }
-}
+};
 
 /* =========================================================================
  * TODO Part B: Implement ConnectionFsm
  * ========================================================================= */
 class ConnectionFsm {
 public:
-    ConnectionFsm() : state_(State::Idle) {
-        update_leds(state_);
+    ConnectionFsm() : current_state_(State::Idle) {
+        states_[static_cast<int>(State::Idle)]        = &idle_;
+        states_[static_cast<int>(State::Advertising)] = &advertising_;
+        states_[static_cast<int>(State::Connecting)]  = &connecting_;
+        states_[static_cast<int>(State::Connected)]   = &connected_;
+        update_leds(current_state_);
     }
 
-    [[nodiscard]] bool handle(Event event) {
-        /* TODO: implement the transition table
-         *
-         * Idle        + Start          -> Advertising
-         * Advertising + PeerFound      -> Connecting
-         * Advertising + Timeout        -> Idle
-         * Connecting  + ConnectionDone -> Connected
-         * Connecting  + Timeout        -> Advertising
-         * Connected   + Disconnect     -> Idle
-         *
-         * All other combinations are invalid -> return false
-         */
-        switch(state_) {
-            case State::Idle:
-            if(event == Event::Start) {
-                enter_state(State::Advertising);
-                return true;
-            }
-            break;
-
-            case State::Advertising:
-            if(event == Event::PeerFound) {
-                enter_state(State::Connecting);
-                return true;
-            } else if(event == Event::Timeout) {
-                enter_state(State::Idle);
-                return true;
-            }
-            break;
-
-            case State::Connecting:
-            if(event == Event::ConnectionDone) {
-                enter_state(State::Connected);
-                return true;
-            } else if(event == Event::Timeout) {
-                enter_state(State::Advertising);
-                return true;
-            }
-            break;
-
-            case State::Connected:
-            if(event == Event::Disconnect) {
-                enter_state(State::Idle);
-                return true;
-            }
-            break;
+    void handle(Event event) {
+        if (auto* state = get_state(current_state_)) {
+            current_state_ = state->handle_event(event);
+            update_leds(current_state_);
         }
-        return false;
     }
 
-    State current_state() const { return state_; }
+    State current_state() const { return current_state_; }
 
-    static const char *state_name(State state) {
-        switch (state) {
-            case State::Idle:           return "Idle";
-            case State::Advertising:    return "Advertising";
-            case State::Connecting:     return "Connecting";
-            case State::Connected:      return "Connected";  
-            default:                    return "Unknown";
+    const char *current_state_name() {
+        if (auto* state = get_state(current_state_)) {
+            return state->get_state_name();
         }
+        return "Unknown";
+    }
+
+    const char *state_name(State state) {
+        auto* s = get_state(state);
+        return s ? s->get_state_name() : "Unknown";
     }
 
 private:
-    State state_;
+    State current_state_;
+    Idle        idle_;
+    Advertising advertising_;
+    Connecting  connecting_;
+    Connected   connected_;
+    StateInterface* states_[4];
 
-    void enter_state(State next) {
-        printk("FSM: %s -> %s\n", ConnectionFsm::state_name(state_), ConnectionFsm::state_name(next));
-        state_ = next;
-        update_leds(state_);
+    StateInterface* get_state(State state) {
+        return states_[static_cast<int>(state)];
     }
 };
 
@@ -166,34 +247,41 @@ int main(void)
     gpio_pin_configure_dt(&kBtn1, GPIO_INPUT | GPIO_PULL_UP);
 
     ConnectionFsm fsm;
-    printk("Initial state: %s\n", ConnectionFsm::state_name(fsm.current_state()));
+    printk("Initial state: %s\n", fsm.current_state_name());
 
     bool last0 = false, last1 = false;
     /* Sequence Button 1 presses through: Start, PeerFound, ConnectionDone */
     const Event btn0_sequence[] = {Event::Start, Event::PeerFound, Event::ConnectionDone};
     int btn0_step = 0;
 
+    // Timeout counter
+    constexpr uint32_t kSleep_ms = 20;
+    constexpr uint32_t kTimeout_ms = 5000;
+    uint32_t timeout_counter = 0;
+
     while (true) {
         if (button_edge(kBtn0, last0)) {
             /* Cycle through events on each press */
             Event ev = btn0_sequence[btn0_step % 3];
             btn0_step++;
-            if (!fsm.handle(ev)) {
-                printk("Invalid transition ignored\n");
-            } else {
-                printk("State: %s\n", ConnectionFsm::state_name(fsm.current_state()));
-            }
+            fsm.handle(ev);
+            printk("State: %s\n", fsm.current_state_name());
         }
 
         if (button_edge(kBtn1, last1)) {
-            if(!fsm.handle(Event::Disconnect)) {
-                printk("Invalid transition ignored\n");
-            } else {
-                printk("State: %s\n", ConnectionFsm::state_name(fsm.current_state()));
-            }
+            fsm.handle(Event::Disconnect);
+            printk("State: %s\n", fsm.current_state_name());
         }
 
-        k_msleep(20);
+        if(fsm.current_state() == State::Advertising || fsm.current_state() == State::Connecting) {
+            timeout_counter++;
+            if(timeout_counter >= (kTimeout_ms / kSleep_ms)) {
+                fsm.handle(Event::Timeout);
+                timeout_counter = 0;
+            }
+        } else if(timeout_counter > 0) { timeout_counter = 0; }
+
+        k_msleep(kSleep_ms);
     }
 
     return 0;
