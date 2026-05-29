@@ -12,10 +12,10 @@
 
 static const gpio_dt_spec kBtn0 = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
 static const gpio_dt_spec kBtn1 = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
-static const gpio_dt_spec kLed0 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-static const gpio_dt_spec kLed1 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
-static const gpio_dt_spec kLed2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
-static const gpio_dt_spec kLed3 = GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios);
+static const gpio_dt_spec kLed1 = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const gpio_dt_spec kLed2 = GPIO_DT_SPEC_GET(DT_ALIAS(led1), gpios);
+static const gpio_dt_spec kLed3 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
+static const gpio_dt_spec kLed4 = GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios);
 
 /* =========================================================================
  * TODO Part A: Define State and Event with enum class
@@ -25,8 +25,8 @@ static const gpio_dt_spec kLed3 = GPIO_DT_SPEC_GET(DT_ALIAS(led3), gpios);
  *   States:  Idle, Advertising, Connecting, Connected
  *   Events:  Start, PeerFound, ConnectionDone, Disconnect, Timeout
  */
-enum class State  { Idle };  /* TODO: add Advertising, Connecting, Connected */
-enum class Event  { Start }; /* TODO: add PeerFound, ConnectionDone, Disconnect, Timeout */
+enum class State  { Idle, Advertising, Connecting, Connected }; 
+enum class Event  { Start, PeerFound, ConnectionDone, Disconnect, Timeout };
 
 /* =========================================================================
  * TODO Part C: LED update — map each State to a visual LED pattern
@@ -34,17 +34,25 @@ enum class Event  { Start }; /* TODO: add PeerFound, ConnectionDone, Disconnect,
 static void update_leds(State state)
 {
     /* Turn all off first */
-    gpio_pin_set_dt(&kLed0, 0);
     gpio_pin_set_dt(&kLed1, 0);
     gpio_pin_set_dt(&kLed2, 0);
     gpio_pin_set_dt(&kLed3, 0);
+    gpio_pin_set_dt(&kLed4, 0);
 
     switch (state) {
     case State::Idle:
-        /* LED4 on, others off */
+        /* LED1 on, others off */
+        gpio_pin_set_dt(&kLed1, 1);
+        break;
+    case State::Advertising:
+        gpio_pin_set_dt(&kLed2, 1);
+        break;
+    case State::Connecting:
         gpio_pin_set_dt(&kLed3, 1);
         break;
-    /* TODO: add cases for Advertising, Connecting, Connected */
+    case State::Connected:
+        gpio_pin_set_dt(&kLed4, 1);
+        break;
     default:
         break;
     }
@@ -71,17 +79,53 @@ public:
          *
          * All other combinations are invalid -> return false
          */
-        (void)event;
+        switch(state_) {
+            case State::Idle:
+            if(event == Event::Start) {
+                enter_state(State::Advertising);
+                return true;
+            }
+            break;
+
+            case State::Advertising:
+            if(event == Event::PeerFound) {
+                enter_state(State::Connecting);
+                return true;
+            } else if(event == Event::Timeout) {
+                enter_state(State::Idle);
+                return true;
+            }
+            break;
+
+            case State::Connecting:
+            if(event == Event::ConnectionDone) {
+                enter_state(State::Connected);
+                return true;
+            } else if(event == Event::Timeout) {
+                enter_state(State::Advertising);
+                return true;
+            }
+            break;
+
+            case State::Connected:
+            if(event == Event::Disconnect) {
+                enter_state(State::Idle);
+                return true;
+            }
+            break;
+        }
         return false;
     }
 
     State current_state() const { return state_; }
 
-    const char *state_name() const {
-        switch (state_) {
-        case State::Idle:         return "Idle";
-        /* TODO: add remaining cases */
-        default:                  return "Unknown";
+    static const char *state_name(State state) {
+        switch (state) {
+            case State::Idle:           return "Idle";
+            case State::Advertising:    return "Advertising";
+            case State::Connecting:     return "Connecting";
+            case State::Connected:      return "Connected";  
+            default:                    return "Unknown";
         }
     }
 
@@ -89,9 +133,7 @@ private:
     State state_;
 
     void enter_state(State next) {
-        printk("FSM: %s -> %s\n", state_name(),
-               /* next state name — you'll need a helper or inline strings */
-               "?");
+        printk("FSM: %s -> %s\n", ConnectionFsm::state_name(state_), ConnectionFsm::state_name(next));
         state_ = next;
         update_leds(state_);
     }
@@ -114,21 +156,21 @@ static bool button_edge(const gpio_dt_spec &spec, bool &last)
 int main(void)
 {
     /* Configure all LEDs */
-    gpio_pin_configure_dt(&kLed0, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&kLed1, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&kLed2, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&kLed3, GPIO_OUTPUT_INACTIVE);
+    gpio_pin_configure_dt(&kLed4, GPIO_OUTPUT_INACTIVE);
 
     /* Configure buttons */
     gpio_pin_configure_dt(&kBtn0, GPIO_INPUT | GPIO_PULL_UP);
     gpio_pin_configure_dt(&kBtn1, GPIO_INPUT | GPIO_PULL_UP);
 
     ConnectionFsm fsm;
-    printk("Initial state: %s\n", fsm.state_name());
+    printk("Initial state: %s\n", ConnectionFsm::state_name(fsm.current_state()));
 
     bool last0 = false, last1 = false;
     /* Sequence Button 1 presses through: Start, PeerFound, ConnectionDone */
-    const Event btn0_sequence[] = {Event::Start, Event::Start, Event::Start};
+    const Event btn0_sequence[] = {Event::Start, Event::PeerFound, Event::ConnectionDone};
     int btn0_step = 0;
 
     while (true) {
@@ -138,13 +180,17 @@ int main(void)
             btn0_step++;
             if (!fsm.handle(ev)) {
                 printk("Invalid transition ignored\n");
+            } else {
+                printk("State: %s\n", ConnectionFsm::state_name(fsm.current_state()));
             }
-            printk("State: %s\n", fsm.state_name());
         }
 
         if (button_edge(kBtn1, last1)) {
-            /* TODO: send Event::Disconnect */
-            printk("State: %s\n", fsm.state_name());
+            if(!fsm.handle(Event::Disconnect)) {
+                printk("Invalid transition ignored\n");
+            } else {
+                printk("State: %s\n", ConnectionFsm::state_name(fsm.current_state()));
+            }
         }
 
         k_msleep(20);
